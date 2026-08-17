@@ -1,5 +1,8 @@
 package com.example.demo_escape_escape;
 
+import com.example.demo_escape_escape.rendering.Renderer;
+import com.example.demo_escape_escape.world.TileMap;
+
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -15,9 +18,14 @@ import java.util.Set;
 
 public class HelloApplication extends Application {
 
-    private double jogadorX = 400;
-    private double jogadorY = 300;
-    private final double VELOCIDADE = 200;
+    private double jogadorX = 64;
+    private double jogadorY = 64;
+
+    private static final double VELOCIDADE = 200;
+    private static final double TAMANHO_JOGADOR = 30;
+
+    private final TileMap tileMap = new TileMap();
+    private final Renderer renderer = new Renderer();
 
     private final Set<KeyCode> teclasAtivas = new HashSet<>();
 
@@ -53,31 +61,91 @@ public class HelloApplication extends Application {
     }
 
     private void atualizarLogica(double deltaTime) {
+        double deslocamento = VELOCIDADE * deltaTime;
         if (teclasAtivas.contains(KeyCode.W) || teclasAtivas.contains(KeyCode.UP)) {
-            jogadorY -= VELOCIDADE * deltaTime;
+            double novoY = jogadorY - deslocamento;
+            if (podeMoverPara(jogadorX, novoY)) {
+                jogadorY = novoY;
+            }
         }
+
         if (teclasAtivas.contains(KeyCode.S) || teclasAtivas.contains(KeyCode.DOWN)) {
-            jogadorY += VELOCIDADE * deltaTime;
+            double novoY = jogadorY + deslocamento;
+            if (podeMoverPara(jogadorX, novoY)) {
+                jogadorY = novoY;
+            }
         }
+
         if (teclasAtivas.contains(KeyCode.A) || teclasAtivas.contains(KeyCode.LEFT)) {
-            jogadorX -= VELOCIDADE * deltaTime;
+            double novoX = jogadorX - deslocamento;
+            if (podeMoverPara(novoX, jogadorY)) {
+                jogadorX = novoX;
+            }
         }
+
         if (teclasAtivas.contains(KeyCode.D) || teclasAtivas.contains(KeyCode.RIGHT)) {
-            jogadorX += VELOCIDADE * deltaTime;
+            double novoX = jogadorX + deslocamento;
+            if (podeMoverPara(novoX, jogadorY)) {
+                jogadorX = novoX;
+            }
         }
+    }
+
+    private boolean podeMoverPara(double novoX, double novoY) {
+
+        int colunaEsquerda =
+                (int) Math.floor(novoX / TileMap.TILE_SIZE);
+
+        int colunaDireita =
+                (int) Math.floor(
+                        (novoX + TAMANHO_JOGADOR - 1)
+                                / TileMap.TILE_SIZE
+                );
+
+        int linhaSuperior =
+                (int) Math.floor(novoY / TileMap.TILE_SIZE);
+
+        int linhaInferior =
+                (int) Math.floor(
+                        (novoY + TAMANHO_JOGADOR - 1)
+                                / TileMap.TILE_SIZE
+                );
+
+        return tileMap.isWalkable(linhaSuperior, colunaEsquerda)
+                && tileMap.isWalkable(linhaSuperior, colunaDireita)
+                && tileMap.isWalkable(linhaInferior, colunaEsquerda)
+                && tileMap.isWalkable(linhaInferior, colunaDireita);
     }
 
     private void renderizar(GraphicsContext gc, double deltaTime) {
         gc.setFill(Color.web("#1e1e1e"));
         gc.fillRect(0, 0, 800, 600);
 
+        renderer.renderMap(gc, tileMap);
+
         gc.setFill(Color.ORANGE);
-        gc.fillRect(jogadorX, jogadorY, 30, 30);
+        gc.fillRect(
+                jogadorX,
+                jogadorY,
+                TAMANHO_JOGADOR,
+                TAMANHO_JOGADOR
+        );
 
         gc.setFill(Color.LIME);
+
         int fps = (int) (1 / deltaTime);
+
         gc.fillText("FPS: " + fps, 10, 20);
-        gc.fillText(String.format("Prisioneiro -> X: %.0f | Y: %.0f", jogadorX, jogadorY), 10, 40);
+
+        gc.fillText(
+                String.format(
+                        "Prisioneiro -> X: %.0f | Y: %.0f",
+                        jogadorX,
+                        jogadorY
+                ),
+                10,
+                40
+        );
     }
 
     public static void main(String[] args) {
