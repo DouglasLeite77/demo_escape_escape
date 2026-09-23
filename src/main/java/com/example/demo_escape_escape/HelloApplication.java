@@ -3,10 +3,7 @@ package com.example.demo_escape_escape;
 import com.example.demo_escape_escape.rendering.Renderer;
 import com.example.demo_escape_escape.world.TileMap;
 import com.example.demo_escape_escape.entity.Agent;
-import com.example.demo_escape_escape.entity.Guard;
 import com.example.demo_escape_escape.ai.pathfinding.GridNode;
-import com.example.demo_escape_escape.ai.state.EnemyState;
-import com.example.demo_escape_escape.ai.Noise;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -33,10 +30,7 @@ public class HelloApplication extends Application {
 
     private final TileMap tileMap = new TileMap();
     private final Renderer renderer = new Renderer();
-
     private final Agent agent = new Agent(2, 2);
-    private final Guard guard = new Guard(2, 2);
-    private final Noise noise = new Noise();
 
     private int goalRow = 16;
     private int goalColumn = 23;
@@ -54,14 +48,25 @@ public class HelloApplication extends Application {
         Pane root = new Pane(canvas);
         Scene scene = new Scene(root);
 
+        // Permite que o Canvas receba comandos do teclado
+        canvas.setFocusTraversable(true);
 
+        // Define o destino inicial
         agent.setDestination(goalRow, goalColumn);
 
         path = agent.getPath();
 
+        // =========================
+        // TECLADO
+        // =========================
+
         scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
 
             teclasAtivas.add(event.getCode());
+
+            // =========================
+            // DESTINO 1
+            // =========================
 
             if (event.getCode() == KeyCode.DIGIT1
                     || event.getCode() == KeyCode.NUMPAD1) {
@@ -75,6 +80,10 @@ public class HelloApplication extends Application {
                 );
             }
 
+            // =========================
+            // DESTINO 2
+            // =========================
+
             if (event.getCode() == KeyCode.DIGIT2
                     || event.getCode() == KeyCode.NUMPAD2) {
 
@@ -87,6 +96,9 @@ public class HelloApplication extends Application {
                 );
             }
 
+            // =========================
+            // DESTINO 3
+            // =========================
 
             if (event.getCode() == KeyCode.DIGIT3
                     || event.getCode() == KeyCode.NUMPAD3) {
@@ -108,6 +120,9 @@ public class HelloApplication extends Application {
 
         final long[] tempoAnterior = {System.nanoTime()};
 
+        // =========================
+        // LOOP DO JOGO
+        // =========================
 
         AnimationTimer gameLoop = new AnimationTimer() {
 
@@ -131,22 +146,24 @@ public class HelloApplication extends Application {
         stage.setScene(scene);
         stage.show();
 
+        // Força o foco no Canvas depois que a janela abrir
         canvas.requestFocus();
 
         gameLoop.start();
     }
 
+    // =========================
+    // ATUALIZAÇÃO DA LÓGICA
+    // =========================
 
     private void atualizarLogica(double deltaTime) {
-
-        double jogadorXAnterior = jogadorX;
-        double jogadorYAnterior = jogadorY;
-
-        noise.clear();
 
         double deslocamento =
                 VELOCIDADE * deltaTime;
 
+        // =========================
+        // MOVIMENTO DO JOGADOR
+        // =========================
 
         if (teclasAtivas.contains(KeyCode.W)
                 || teclasAtivas.contains(KeyCode.UP)) {
@@ -204,36 +221,30 @@ public class HelloApplication extends Application {
             }
         }
 
-        if (jogadorX != jogadorXAnterior
-                || jogadorY != jogadorYAnterior) {
+        // =========================
+        // ATUALIZA O AGENTE
+        // =========================
 
-            noise.emit(
-                    jogadorX + TAMANHO_JOGADOR / 2,
-                    jogadorY + TAMANHO_JOGADOR / 2,
-                    128
-            );
-        }
+        /*
+         * O Agent verifica se o destino mudou.
+         *
+         * Quando o destino muda,
+         * o A* calcula automaticamente
+         * uma nova rota.
+         */
 
         agent.update(
                 deltaTime,
                 tileMap
         );
 
-        path = agent.getPath();
-
-        guard.update(
-                deltaTime,
-                tileMap,
-                jogadorX,
-                jogadorY,
-                TAMANHO_JOGADOR,
-                noise
-        );
-
+        // Atualiza o caminho exibido na tela
         path = agent.getPath();
     }
 
-
+    // =========================
+    // VERIFICA COLISÃO DO JOGADOR
+    // =========================
 
     private boolean podeMoverPara(
             double novoX,
@@ -280,12 +291,18 @@ public class HelloApplication extends Application {
                 );
     }
 
+    // =========================
+    // DESENHA O JOGO
+    // =========================
 
     private void renderizar(
             GraphicsContext gc,
             double deltaTime
     ) {
 
+        // =========================
+        // FUNDO
+        // =========================
 
         gc.setFill(
                 Color.web("#1e1e1e")
@@ -298,21 +315,27 @@ public class HelloApplication extends Application {
                 600
         );
 
-
+        // =========================
+        // MAPA
+        // =========================
 
         renderer.renderMap(
                 gc,
                 tileMap
         );
 
-
+        // =========================
+        // CAMINHO A*
+        // =========================
 
         renderer.renderPath(
                 gc,
                 path
         );
 
-
+        // =========================
+        // JOGADOR
+        // =========================
 
         gc.setFill(Color.ORANGE);
 
@@ -323,7 +346,9 @@ public class HelloApplication extends Application {
                 TAMANHO_JOGADOR
         );
 
-
+        // =========================
+        // INFORMAÇÕES
+        // =========================
 
         gc.setFill(Color.LIME);
 
@@ -366,11 +391,9 @@ public class HelloApplication extends Application {
                 80
         );
 
-        gc.fillText(
-                "Estado do guarda: " + guard.getState(),
-                10,
-                100
-        );
+        // =========================
+        // AGENTE
+        // =========================
 
         gc.setFill(Color.CYAN);
 
@@ -380,32 +403,11 @@ public class HelloApplication extends Application {
                 agent.getSize(),
                 agent.getSize()
         );
-
-        if (guard.getState() == EnemyState.CHASE) {
-
-            gc.setFill(Color.YELLOW);
-
-        } else if (guard.getState() == EnemyState.SEARCH) {
-
-            gc.setFill(Color.ORANGE);
-
-        } else if (guard.getState() == EnemyState.INVESTIGATE) {
-
-            gc.setFill(Color.PURPLE);
-
-        } else {
-
-            gc.setFill(Color.RED);
-        }
-
-        gc.fillRect(
-                guard.getX(),
-                guard.getY(),
-                guard.getSize(),
-                guard.getSize()
-        );
     }
 
+    // =========================
+    // MAIN
+    // =========================
 
     public static void main(String[] args) {
         launch();
