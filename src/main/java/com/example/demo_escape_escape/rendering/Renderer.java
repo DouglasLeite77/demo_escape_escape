@@ -1,76 +1,82 @@
-    package com.example.demo_escape_escape.rendering;
+package com.example.demo_escape_escape.rendering;
 
-    import com.example.demo_escape_escape.ai.pathfinding.GridNode;
-    import com.example.demo_escape_escape.world.TileMap;
-    import com.example.demo_escape_escape.world.TileType;
+import com.example.demo_escape_escape.ai.pathfinding.GridNode;
+import com.example.demo_escape_escape.world.TileMap;
+import com.example.demo_escape_escape.world.TileType;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 
-    import javafx.scene.canvas.GraphicsContext;
-    import javafx.scene.paint.Color;
+import java.util.List;
 
-    import java.util.List;
+public class Renderer {
 
-    public class Renderer {
+    private final GameAssets assets = new GameAssets();
 
-        public void renderMap(GraphicsContext gc, TileMap tileMap) {
+    public void renderMap(GraphicsContext gc, TileMap tileMap) {
 
-            for (int row = 0; row < tileMap.getRows(); row++) {
+        gc.setImageSmoothing(false);
 
-                for (int column = 0; column < tileMap.getColumns(); column++) {
+        for (int row = 0; row < tileMap.getRows(); row++) {
+            for (int column = 0; column < tileMap.getColumns(); column++) {
 
-                    TileType tile = tileMap.getTile(row, column);
+                TileType tile = tileMap.getTile(row, column);
 
-                    switch (tile) {
+                double x = column * TileMap.TILE_SIZE;
+                double y = row * TileMap.TILE_SIZE;
 
-                        case FLOOR:
-                            gc.setFill(Color.web("#4A4A4A"));
-                            break;
+                if (tile == TileType.WALL) {
 
-                        case WALL:
-                            gc.setFill(Color.web("#20242A"));
-                            break;
+                    gc.drawImage(
+                            assets.getWall(),
+                            x,
+                            y,
+                            TileMap.TILE_SIZE,
+                            TileMap.TILE_SIZE
+                    );
 
-                        case DEBRIS:
-                            gc.setFill(Color.web("#795548"));
-                            break;
+                } else {
+
+                    gc.drawImage(
+                            assets.getFloor(),
+                            x,
+                            y,
+                            TileMap.TILE_SIZE,
+                            TileMap.TILE_SIZE
+                    );
+
+                    if (tile == TileType.DEBRIS) {
+
+                        gc.drawImage(
+                                assets.getDebris(),
+                                x,
+                                y,
+                                TileMap.TILE_SIZE,
+                                TileMap.TILE_SIZE
+                        );
                     }
-
-                    double x = column * TileMap.TILE_SIZE;
-                    double y = row * TileMap.TILE_SIZE;
-
-                    gc.fillRect(
-                            x,
-                            y,
-                            TileMap.TILE_SIZE,
-                            TileMap.TILE_SIZE
-                    );
-
-                    gc.setStroke(Color.web("#30343A"));
-
-                    gc.strokeRect(
-                            x,
-                            y,
-                            TileMap.TILE_SIZE,
-                            TileMap.TILE_SIZE
-                    );
                 }
             }
         }
+    }
 
-        public void renderPath(GraphicsContext gc, List<GridNode> path) {
+    public void renderPath(GraphicsContext gc, List<GridNode> path) {
 
-            gc.setFill(Color.YELLOW);
+        gc.setFill(Color.YELLOW);
 
-            for (GridNode node : path) {
+        for (GridNode node : path) {
 
-                double x = node.getColumn() * TileMap.TILE_SIZE;
-                double y = node.getRow() * TileMap.TILE_SIZE;
+            double x = node.getColumn() * TileMap.TILE_SIZE;
+            double y = node.getRow() * TileMap.TILE_SIZE;
 
-                gc.fillRect(
-                        x + 10,
-                        y + 10,
-                        TileMap.TILE_SIZE - 20,
-                        TileMap.TILE_SIZE - 20
-                );
-            }
+            gc.fillRect(
+                    x + 10,
+                    y + 10,
+                    TileMap.TILE_SIZE - 20,
+                    TileMap.TILE_SIZE - 20
+            );
         }
     }
+
+
+}
