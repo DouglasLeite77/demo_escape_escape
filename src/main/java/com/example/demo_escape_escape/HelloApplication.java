@@ -5,9 +5,9 @@ import com.example.demo_escape_escape.world.TileMap;
 import com.example.demo_escape_escape.entity.Agent;
 import com.example.demo_escape_escape.entity.Guard;
 import com.example.demo_escape_escape.ai.pathfinding.GridNode;
-import com.example.demo_escape_escape.ai.state.EnemyState;
 import com.example.demo_escape_escape.ai.Noise;
 import com.example.demo_escape_escape.rendering.GameAssets;
+import com.example.demo_escape_escape.entity.GuardType;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -29,6 +29,9 @@ public class HelloApplication extends Application {
     private double jogadorX = 64;
     private double jogadorY = 64;
 
+    private double jogadorXAntesEsconder;
+    private double jogadorYAntesEsconder;
+
     private static final double VELOCIDADE = 200;
     private static final double TAMANHO_JOGADOR = 50;
     private static final double TAMANHO_HITBOX = 30;
@@ -38,26 +41,79 @@ public class HelloApplication extends Application {
     private final GameAssets assets = new GameAssets();
 
     private final Agent agent = new Agent(2, 2);
-    private final Guard guard = new Guard(2, 20);
+    private final Guard patrolGuard =
+            new Guard(
+                    GuardType.PATRULHEIRO,
+                    2,
+                    20,
+                    new int[][]{
+                            {2, 20},
+                            {6, 22},
+                            {6, 10},
+                            {3, 12}
+                    }
+            );
+
+    private final Guard investigatorGuard =
+            new Guard(
+                    GuardType.INVESTIGADOR,
+                    9,
+                    16,
+                    new int[][]{
+                            {9, 16},
+                            {8, 14},
+                            {11, 18}
+                    }
+            );
+
+    private final Guard securityGuard =
+            new Guard(
+                    GuardType.SEGURANCA,
+                    14,
+                    21,
+                    new int[][]{
+                            {14, 21},
+                            {13, 23},
+                            {16, 20},
+                            {13, 21}
+                    }
+            );
+
+    private final List<Guard> guards =
+            java.util.Arrays.asList(
+                    patrolGuard,
+                    investigatorGuard,
+                    securityGuard
+            );
+
     private final Noise noise = new Noise();
 
     private int goalRow = 16;
     private int goalColumn = 23;
+
     private static final int CARD_ROW = 9;
     private static final int CARD_COLUMN = 5;
+
     private static final int DOOR_ROW = 16;
     private static final int DOOR_COLUMN = 22;
 
+    private static final int HIDE_1_ROW = 3;
+    private static final int HIDE_1_COLUMN = 8;
+
+    private static final int HIDE_2_ROW = 11;
+    private static final int HIDE_2_COLUMN = 18;
+
+    private static final int EXIT_ROW = 16;
+    private static final int EXIT_COLUMN = 23;
+
     private boolean doorUnlocked = false;
     private boolean hasAccessCard = false;
+    private boolean playerHidden = false;
 
     private List<GridNode> path;
 
     private final Set<KeyCode> teclasAtivas = new HashSet<>();
     private boolean debugMode = false;
-
-    private static final int EXIT_ROW = 16;
-    private static final int EXIT_COLUMN = 23;
 
     private boolean gameWon = false;
     private boolean gameOver = false;
@@ -71,8 +127,10 @@ public class HelloApplication extends Application {
         Pane root = new Pane(canvas);
         Scene scene = new Scene(root);
 
-
-        agent.setDestination(goalRow, goalColumn);
+        agent.setDestination(
+                goalRow,
+                goalColumn
+        );
 
         path = agent.getPath();
 
@@ -90,25 +148,49 @@ public class HelloApplication extends Application {
                 reiniciarJogo();
             }
 
-            if (event.getCode() == KeyCode.E
-                    && !hasAccessCard
-                    && jogadorPertoDoTile(
-                    CARD_ROW,
-                    CARD_COLUMN
-            )) {
+            if (event.getCode() == KeyCode.E) {
 
-                hasAccessCard = true;
-            }
+                if (playerHidden) {
 
-            if (event.getCode() == KeyCode.E
-                    && hasAccessCard
-                    && !doorUnlocked
-                    && jogadorPertoDoTile(
-                    DOOR_ROW,
-                    DOOR_COLUMN
-            )) {
+                    sairDoEsconderijo();
 
-                doorUnlocked = true;
+                } else if (jogadorPertoDoTile(
+                        HIDE_1_ROW,
+                        HIDE_1_COLUMN
+                )) {
+
+                    entrarNoEsconderijo(
+                            HIDE_1_ROW,
+                            HIDE_1_COLUMN
+                    );
+
+                } else if (jogadorPertoDoTile(
+                        HIDE_2_ROW,
+                        HIDE_2_COLUMN
+                )) {
+
+                    entrarNoEsconderijo(
+                            HIDE_2_ROW,
+                            HIDE_2_COLUMN
+                    );
+
+                } else if (!hasAccessCard
+                        && jogadorPertoDoTile(
+                        CARD_ROW,
+                        CARD_COLUMN
+                )) {
+
+                    hasAccessCard = true;
+
+                } else if (hasAccessCard
+                        && !doorUnlocked
+                        && jogadorPertoDoTile(
+                        DOOR_ROW,
+                        DOOR_COLUMN
+                )) {
+
+                    doorUnlocked = true;
+                }
             }
 
             if (event.getCode() == KeyCode.DIGIT1
@@ -135,7 +217,6 @@ public class HelloApplication extends Application {
                 );
             }
 
-
             if (event.getCode() == KeyCode.DIGIT3
                     || event.getCode() == KeyCode.NUMPAD3) {
 
@@ -154,8 +235,9 @@ public class HelloApplication extends Application {
                 event -> teclasAtivas.remove(event.getCode())
         );
 
-        final long[] tempoAnterior = {System.nanoTime()};
-
+        final long[] tempoAnterior = {
+                System.nanoTime()
+        };
 
         AnimationTimer gameLoop = new AnimationTimer() {
 
@@ -170,11 +252,16 @@ public class HelloApplication extends Application {
 
                 atualizarLogica(deltaTime);
 
-                renderizar(gc, deltaTime);
+                renderizar(
+                        gc,
+                        deltaTime
+                );
             }
         };
 
-        stage.setTitle("Escape Escape - A* Pathfinding");
+        stage.setTitle(
+                "Escape Escape - A* Pathfinding"
+        );
 
         stage.setScene(scene);
         stage.show();
@@ -194,12 +281,18 @@ public class HelloApplication extends Application {
 
         hasAccessCard = false;
         doorUnlocked = false;
+        playerHidden = false;
 
-        guard.reset();
+        noise.clear();
+
+        for (Guard guard : guards) {
+            guard.reset();
+        }
     }
 
-
-    private void atualizarLogica(double deltaTime) {
+    private void atualizarLogica(
+            double deltaTime
+    ) {
 
         if (gameWon || gameOver) {
             return;
@@ -210,74 +303,80 @@ public class HelloApplication extends Application {
 
         noise.clear();
 
-        double deslocamento =
-                VELOCIDADE * deltaTime;
+        if (!playerHidden) {
 
+            double deslocamento =
+                    VELOCIDADE * deltaTime;
 
-        if (teclasAtivas.contains(KeyCode.W)
-                || teclasAtivas.contains(KeyCode.UP)) {
+            if (teclasAtivas.contains(KeyCode.W)
+                    || teclasAtivas.contains(KeyCode.UP)) {
 
-            double novoY =
-                    jogadorY - deslocamento;
+                double novoY =
+                        jogadorY - deslocamento;
 
-            if (podeMoverPara(
-                    jogadorX,
-                    novoY
-            )) {
-                jogadorY = novoY;
+                if (podeMoverPara(
+                        jogadorX,
+                        novoY
+                )) {
+
+                    jogadorY = novoY;
+                }
             }
-        }
 
-        if (teclasAtivas.contains(KeyCode.S)
-                || teclasAtivas.contains(KeyCode.DOWN)) {
+            if (teclasAtivas.contains(KeyCode.S)
+                    || teclasAtivas.contains(KeyCode.DOWN)) {
 
-            double novoY =
-                    jogadorY + deslocamento;
+                double novoY =
+                        jogadorY + deslocamento;
 
-            if (podeMoverPara(
-                    jogadorX,
-                    novoY
-            )) {
-                jogadorY = novoY;
+                if (podeMoverPara(
+                        jogadorX,
+                        novoY
+                )) {
+
+                    jogadorY = novoY;
+                }
             }
-        }
 
-        if (teclasAtivas.contains(KeyCode.A)
-                || teclasAtivas.contains(KeyCode.LEFT)) {
+            if (teclasAtivas.contains(KeyCode.A)
+                    || teclasAtivas.contains(KeyCode.LEFT)) {
 
-            double novoX =
-                    jogadorX - deslocamento;
+                double novoX =
+                        jogadorX - deslocamento;
 
-            if (podeMoverPara(
-                    novoX,
-                    jogadorY
-            )) {
-                jogadorX = novoX;
+                if (podeMoverPara(
+                        novoX,
+                        jogadorY
+                )) {
+
+                    jogadorX = novoX;
+                }
             }
-        }
 
-        if (teclasAtivas.contains(KeyCode.D)
-                || teclasAtivas.contains(KeyCode.RIGHT)) {
+            if (teclasAtivas.contains(KeyCode.D)
+                    || teclasAtivas.contains(KeyCode.RIGHT)) {
 
-            double novoX =
-                    jogadorX + deslocamento;
+                double novoX =
+                        jogadorX + deslocamento;
 
-            if (podeMoverPara(
-                    novoX,
-                    jogadorY
-            )) {
-                jogadorX = novoX;
+                if (podeMoverPara(
+                        novoX,
+                        jogadorY
+                )) {
+
+                    jogadorX = novoX;
+                }
             }
-        }
 
-        if (jogadorX != jogadorXAnterior
-                || jogadorY != jogadorYAnterior) {
+            if (jogadorX != jogadorXAnterior
+                    || jogadorY != jogadorYAnterior) {
 
-            noise.emit(
-                    jogadorX + TAMANHO_JOGADOR / 2,
-                    jogadorY + TAMANHO_JOGADOR / 2,
-                    128
-            );
+                noise.emit(
+                        jogadorX + TAMANHO_JOGADOR / 2,
+                        jogadorY + TAMANHO_JOGADOR / 2,
+                        128
+                );
+            }
         }
 
         agent.update(
@@ -287,16 +386,21 @@ public class HelloApplication extends Application {
 
         path = agent.getPath();
 
-        guard.update(
-                deltaTime,
-                tileMap,
-                jogadorX,
-                jogadorY,
-                TAMANHO_JOGADOR,
-                noise
-        );
+        for (Guard guard : guards) {
+
+            guard.update(
+                    deltaTime,
+                    tileMap,
+                    jogadorX,
+                    jogadorY,
+                    TAMANHO_JOGADOR,
+                    playerHidden,
+                    noise
+            );
+        }
 
         if (guardaCapturouJogador()) {
+
             gameOver = true;
             return;
         }
@@ -313,8 +417,10 @@ public class HelloApplication extends Application {
                                 / TileMap.TILE_SIZE
                 );
 
-        if (playerRow == EXIT_ROW
-                && playerColumn == EXIT_COLUMN) {
+        if (!playerHidden
+                && playerRow == EXIT_ROW
+                && playerColumn == EXIT_COLUMN
+                && doorUnlocked) {
 
             gameWon = true;
         }
@@ -330,8 +436,11 @@ public class HelloApplication extends Application {
         double margem =
                 (TAMANHO_JOGADOR - TAMANHO_HITBOX) / 2;
 
-        double hitboxX = novoX + margem;
-        double hitboxY = novoY + margem;
+        double hitboxX =
+                novoX + margem;
+
+        double hitboxY =
+                novoY + margem;
 
         int colunaEsquerda =
                 (int) Math.floor(
@@ -399,27 +508,52 @@ public class HelloApplication extends Application {
 
     private boolean guardaCapturouJogador() {
 
-        double margemPlayer =
-                (TAMANHO_JOGADOR - TAMANHO_HITBOX) / 2;
+        if (playerHidden) {
+            return false;
+        }
 
-        double playerX = jogadorX + margemPlayer;
-        double playerY = jogadorY + margemPlayer;
+        double margemPlayer =
+                (TAMANHO_JOGADOR
+                        - TAMANHO_HITBOX) / 2;
+
+        double playerX =
+                jogadorX + margemPlayer;
+
+        double playerY =
+                jogadorY + margemPlayer;
 
         double hitboxGuarda = 24;
 
-        double margemGuarda =
-                (guard.getSize() - hitboxGuarda) / 2;
+        for (Guard guard : guards) {
 
-        double guardX =
-                guard.getX() + margemGuarda;
+            double margemGuarda =
+                    (guard.getSize()
+                            - hitboxGuarda) / 2;
 
-        double guardY =
-                guard.getY() + margemGuarda;
+            double guardX =
+                    guard.getX()
+                            + margemGuarda;
 
-        return playerX < guardX + hitboxGuarda
-                && playerX + TAMANHO_HITBOX > guardX
-                && playerY < guardY + hitboxGuarda
-                && playerY + TAMANHO_HITBOX > guardY;
+            double guardY =
+                    guard.getY()
+                            + margemGuarda;
+
+            boolean capturado =
+                    playerX
+                            < guardX + hitboxGuarda
+                            && playerX + TAMANHO_HITBOX
+                            > guardX
+                            && playerY
+                            < guardY + hitboxGuarda
+                            && playerY + TAMANHO_HITBOX
+                            > guardY;
+
+            if (capturado) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean jogadorPertoDoTile(
@@ -456,6 +590,45 @@ public class HelloApplication extends Application {
         return distance <= 48;
     }
 
+    private void entrarNoEsconderijo(
+            int row,
+            int column
+    ) {
+
+        jogadorXAntesEsconder =
+                jogadorX;
+
+        jogadorYAntesEsconder =
+                jogadorY;
+
+        jogadorX =
+                column * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE
+                        - TAMANHO_JOGADOR) / 2;
+
+        jogadorY =
+                row * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE
+                        - TAMANHO_JOGADOR) / 2;
+
+        playerHidden = true;
+
+        noise.clear();
+    }
+
+    private void sairDoEsconderijo() {
+
+        jogadorX =
+                jogadorXAntesEsconder;
+
+        jogadorY =
+                jogadorYAntesEsconder;
+
+        playerHidden = false;
+
+        noise.clear();
+    }
+
     private void renderizar(
             GraphicsContext gc,
             double deltaTime
@@ -475,6 +648,18 @@ public class HelloApplication extends Application {
         renderer.renderMap(
                 gc,
                 tileMap
+        );
+
+        renderizarEsconderijo(
+                gc,
+                HIDE_1_ROW,
+                HIDE_1_COLUMN
+        );
+
+        renderizarEsconderijo(
+                gc,
+                HIDE_2_ROW,
+                HIDE_2_COLUMN
         );
 
         if (!doorUnlocked) {
@@ -562,8 +747,11 @@ public class HelloApplication extends Application {
             }
         }
 
-        double exitX = EXIT_COLUMN * TileMap.TILE_SIZE;
-        double exitY = EXIT_ROW * TileMap.TILE_SIZE;
+        double exitX =
+                EXIT_COLUMN * TileMap.TILE_SIZE;
+
+        double exitY =
+                EXIT_ROW * TileMap.TILE_SIZE;
 
         double exitSize = 48;
 
@@ -576,26 +764,37 @@ public class HelloApplication extends Application {
         );
 
         if (debugMode) {
+
             renderer.renderPath(
                     gc,
                     path
             );
         }
 
-        gc.drawImage(
-                assets.getPlayer(),
-                jogadorX,
-                jogadorY,
-                TAMANHO_JOGADOR,
-                TAMANHO_JOGADOR
-        );
+        if (!playerHidden) {
 
-        gc.drawImage(
-                assets.getGuard(),
-                guard.getX(),
-                guard.getY(),
-                guard.getSize(),
-                guard.getSize()
+            gc.drawImage(
+                    assets.getPlayer(),
+                    jogadorX,
+                    jogadorY,
+                    TAMANHO_JOGADOR,
+                    TAMANHO_JOGADOR
+            );
+        }
+
+        for (Guard guard : guards) {
+
+            gc.drawImage(
+                    assets.getGuard(),
+                    guard.getX(),
+                    guard.getY(),
+                    guard.getSize(),
+                    guard.getSize()
+            );
+        }
+
+        renderizarInteracaoEsconderijo(
+                gc
         );
 
         if (debugMode) {
@@ -605,8 +804,14 @@ public class HelloApplication extends Application {
             int fps;
 
             if (deltaTime > 0) {
-                fps = (int) (1 / deltaTime);
+
+                fps =
+                        (int) (
+                                1 / deltaTime
+                        );
+
             } else {
+
                 fps = 0;
             }
 
@@ -641,12 +846,22 @@ public class HelloApplication extends Application {
                     80
             );
 
-            gc.fillText(
-                    "Estado do guarda: " + guard.getState(),
-                    10,
-                    100
-            );
+            int debugY = 100;
+
+            for (Guard guard : guards) {
+
+                gc.fillText(
+                        guard.getType().getDisplayName()
+                                + ": "
+                                + guard.getState(),
+                        10,
+                        debugY
+                );
+
+                debugY += 20;
+            }
         }
+
         if (gameWon) {
 
             gc.setFill(
@@ -726,6 +941,90 @@ public class HelloApplication extends Application {
                     "Pressione R para tentar novamente",
                     255,
                     325
+            );
+        }
+    }
+
+    private void renderizarEsconderijo(
+            GraphicsContext gc,
+            int row,
+            int column
+    ) {
+
+        double x =
+                column * TileMap.TILE_SIZE;
+
+        double y =
+                row * TileMap.TILE_SIZE;
+
+        gc.setFill(
+                Color.DARKSLATEBLUE
+        );
+
+        gc.fillRect(
+                x + 2,
+                y + 1,
+                TileMap.TILE_SIZE - 4,
+                TileMap.TILE_SIZE - 2
+        );
+
+        gc.setStroke(
+                Color.LIGHTSLATEGRAY
+        );
+
+        gc.strokeRect(
+                x + 2,
+                y + 1,
+                TileMap.TILE_SIZE - 4,
+                TileMap.TILE_SIZE - 2
+        );
+
+        gc.setFill(
+                Color.GRAY
+        );
+
+        gc.fillOval(
+                x + 22,
+                y + 15,
+                3,
+                3
+        );
+    }
+
+    private void renderizarInteracaoEsconderijo(
+            GraphicsContext gc
+    ) {
+
+        gc.setFill(Color.WHITE);
+
+        gc.setFont(
+                javafx.scene.text.Font.font(14)
+        );
+
+        if (playerHidden) {
+
+            gc.fillText(
+                    "ESCONDIDO - E para sair",
+                    jogadorX - 55,
+                    jogadorY - 10
+            );
+
+            return;
+        }
+
+        if (jogadorPertoDoTile(
+                HIDE_1_ROW,
+                HIDE_1_COLUMN
+        )
+                || jogadorPertoDoTile(
+                HIDE_2_ROW,
+                HIDE_2_COLUMN
+        )) {
+
+            gc.fillText(
+                    "E - Esconder",
+                    jogadorX - 20,
+                    jogadorY - 10
             );
         }
     }

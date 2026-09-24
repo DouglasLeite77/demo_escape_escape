@@ -1,10 +1,10 @@
 package com.example.demo_escape_escape.entity;
 
+import com.example.demo_escape_escape.ai.Noise;
 import com.example.demo_escape_escape.ai.pathfinding.AStarPathfinder;
 import com.example.demo_escape_escape.ai.pathfinding.GridNode;
 import com.example.demo_escape_escape.ai.state.EnemyState;
 import com.example.demo_escape_escape.world.TileMap;
-import com.example.demo_escape_escape.ai.Noise;
 
 import java.util.Collections;
 import java.util.List;
@@ -12,49 +12,67 @@ import java.util.List;
 public class Guard {
 
     private static final double SIZE = 50;
-    private static final double SPEED = 80;
-    private static final double VISION_RANGE = 160;
-    private static final double INVESTIGATE_DURATION = 1.5;
+
+    private final GuardType type;
+
+    private final int startRow;
+    private final int startColumn;
+
+    private final int[][] patrolPoints;
+
+    private double x;
+    private double y;
 
     private double investigateTimer = 0;
-    private double x = 20 * TileMap.TILE_SIZE;
-    private double y = 2 * TileMap.TILE_SIZE;
+    private double searchTimer = 0;
 
     private int lastPlayerRow = -1;
     private int lastPlayerColumn = -1;
-    private boolean playerVisible = false;
-
-    private static final double SEARCH_DURATION = 2.0;
 
     private int lastSeenRow = -1;
     private int lastSeenColumn = -1;
 
-    private double searchTimer = 0;
+    private boolean playerVisible = false;
 
-    private EnemyState state = EnemyState.PATROL;
+    private EnemyState state =
+            EnemyState.PATROL;
 
-    private final AStarPathfinder pathfinder = new AStarPathfinder();
+    private final AStarPathfinder pathfinder =
+            new AStarPathfinder();
 
-    private List<GridNode> path = Collections.emptyList();
+    private List<GridNode> path =
+            Collections.emptyList();
+
     private int pathIndex = 1;
+    private int patrolIndex;
 
+    public Guard(
+            GuardType type,
+            int startRow,
+            int startColumn,
+            int[][] patrolPoints
+    ) {
 
-    private final int[][] patrolPoints = {
-            {2, 2},
-            {2, 20},
-            {14, 23},
-            {16, 2}
-    };
+        this.type = type;
 
-    private int patrolIndex = 1;
+        this.startRow = startRow;
+        this.startColumn = startColumn;
 
-    public Guard(int startRow, int startColumn) {
+        this.patrolPoints = patrolPoints;
 
-        this.x = startColumn * TileMap.TILE_SIZE
-                + (TileMap.TILE_SIZE - SIZE) / 2;
+        this.x =
+                startColumn * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE - SIZE) / 2;
 
-        this.y = startRow * TileMap.TILE_SIZE
-                + (TileMap.TILE_SIZE - SIZE) / 2;
+        this.y =
+                startRow * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE - SIZE) / 2;
+
+        if (patrolPoints.length > 1) {
+            patrolIndex = 1;
+        } else {
+            patrolIndex = 0;
+        }
     }
 
     public void update(
@@ -63,15 +81,24 @@ public class Guard {
             double playerX,
             double playerY,
             double playerSize,
+            boolean playerHidden,
             Noise noise
     ) {
 
-        playerVisible = canSeePlayer(
-                playerX,
-                playerY,
-                playerSize,
-                tileMap
-        );
+        if (playerHidden) {
+
+            playerVisible = false;
+
+        } else {
+
+            playerVisible =
+                    canSeePlayer(
+                            playerX,
+                            playerY,
+                            playerSize,
+                            tileMap
+                    );
+        }
 
         if (playerVisible) {
 
@@ -87,24 +114,31 @@ public class Guard {
                                     / TileMap.TILE_SIZE
                     );
 
-            state = EnemyState.CHASE;
+            state =
+                    EnemyState.CHASE;
 
             searchTimer = 0;
             investigateTimer = 0;
 
         } else if (state == EnemyState.CHASE) {
 
-            state = EnemyState.SEARCH;
+            state =
+                    EnemyState.SEARCH;
 
-            path = pathfinder.findPath(
-                    tileMap,
-                    getCurrentRow(),
-                    getCurrentColumn(),
-                    lastSeenRow,
-                    lastSeenColumn
-            );
+            if (lastSeenRow >= 0
+                    && lastSeenColumn >= 0) {
 
-            pathIndex = 1;
+                path =
+                        pathfinder.findPath(
+                                tileMap,
+                                getCurrentRow(),
+                                getCurrentColumn(),
+                                lastSeenRow,
+                                lastSeenColumn
+                        );
+
+                pathIndex = 1;
+            }
 
         } else if (state == EnemyState.PATROL
                 && canHearNoise(noise)) {
@@ -121,17 +155,20 @@ public class Guard {
                                     / TileMap.TILE_SIZE
                     );
 
-            path = pathfinder.findPath(
-                    tileMap,
-                    getCurrentRow(),
-                    getCurrentColumn(),
-                    noiseRow,
-                    noiseColumn
-            );
+            path =
+                    pathfinder.findPath(
+                            tileMap,
+                            getCurrentRow(),
+                            getCurrentColumn(),
+                            noiseRow,
+                            noiseColumn
+                    );
 
             pathIndex = 1;
 
-            state = EnemyState.INVESTIGATE;
+            state =
+                    EnemyState.INVESTIGATE;
+
             investigateTimer = 0;
         }
 
@@ -173,46 +210,75 @@ public class Guard {
             TileMap tileMap
     ) {
 
-        double guardCenterX = x + SIZE / 2;
-        double guardCenterY = y + SIZE / 2;
+        double guardCenterX =
+                x + SIZE / 2;
 
-        double playerCenterX = playerX + playerSize / 2;
-        double playerCenterY = playerY + playerSize / 2;
+        double guardCenterY =
+                y + SIZE / 2;
 
-        double deltaX = playerCenterX - guardCenterX;
-        double deltaY = playerCenterY - guardCenterY;
+        double playerCenterX =
+                playerX + playerSize / 2;
+
+        double playerCenterY =
+                playerY + playerSize / 2;
+
+        double deltaX =
+                playerCenterX - guardCenterX;
+
+        double deltaY =
+                playerCenterY - guardCenterY;
 
         double distance =
-                Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                Math.sqrt(
+                        deltaX * deltaX
+                                + deltaY * deltaY
+                );
 
-        if (distance > VISION_RANGE) {
+        if (distance > type.getVisionRange()) {
             return false;
         }
 
-        int steps = (int) (distance / 8);
+        int steps =
+                (int) (
+                        distance / 8
+                );
 
         if (steps <= 0) {
             return true;
         }
 
-        for (int i = 1; i < steps; i++) {
+        for (int i = 1;
+             i < steps;
+             i++) {
 
             double progress =
                     (double) i / steps;
 
             double checkX =
-                    guardCenterX + deltaX * progress;
+                    guardCenterX
+                            + deltaX * progress;
 
             double checkY =
-                    guardCenterY + deltaY * progress;
+                    guardCenterY
+                            + deltaY * progress;
 
             int column =
-                    (int) (checkX / TileMap.TILE_SIZE);
+                    (int) (
+                            checkX
+                                    / TileMap.TILE_SIZE
+                    );
 
             int row =
-                    (int) (checkY / TileMap.TILE_SIZE);
+                    (int) (
+                            checkY
+                                    / TileMap.TILE_SIZE
+                    );
 
-            if (!tileMap.isWalkable(row, column)) {
+            if (!tileMap.isWalkable(
+                    row,
+                    column
+            )) {
+
                 return false;
             }
         }
@@ -220,36 +286,82 @@ public class Guard {
         return true;
     }
 
-    private void updatePatrol(double deltaTime, TileMap tileMap) {
+    private boolean canHearNoise(
+            Noise noise
+    ) {
 
+        if (!noise.isActive()) {
+            return false;
+        }
 
-        if (path.isEmpty() || pathIndex >= path.size()) {
+        double guardCenterX =
+                x + SIZE / 2;
 
-            int targetRow = patrolPoints[patrolIndex][0];
-            int targetColumn = patrolPoints[patrolIndex][1];
+        double guardCenterY =
+                y + SIZE / 2;
 
-            path = pathfinder.findPath(
-                    tileMap,
-                    getCurrentRow(),
-                    getCurrentColumn(),
-                    targetRow,
-                    targetColumn
-            );
+        double deltaX =
+                noise.getX() - guardCenterX;
+
+        double deltaY =
+                noise.getY() - guardCenterY;
+
+        double distance =
+                Math.sqrt(
+                        deltaX * deltaX
+                                + deltaY * deltaY
+                );
+
+        double hearingRadius =
+                noise.getRadius()
+                        * type.getHearingMultiplier();
+
+        return distance <= hearingRadius;
+    }
+
+    private void updatePatrol(
+            double deltaTime,
+            TileMap tileMap
+    ) {
+
+        if (path.isEmpty()
+                || pathIndex >= path.size()) {
+
+            int targetRow =
+                    patrolPoints[patrolIndex][0];
+
+            int targetColumn =
+                    patrolPoints[patrolIndex][1];
+
+            path =
+                    pathfinder.findPath(
+                            tileMap,
+                            getCurrentRow(),
+                            getCurrentColumn(),
+                            targetRow,
+                            targetColumn
+                    );
 
             pathIndex = 1;
 
             patrolIndex++;
 
-            if (patrolIndex >= patrolPoints.length) {
+            if (patrolIndex
+                    >= patrolPoints.length) {
+
                 patrolIndex = 0;
             }
         }
 
-        if (path.isEmpty() || pathIndex >= path.size()) {
+        if (path.isEmpty()
+                || pathIndex >= path.size()) {
+
             return;
         }
 
-        moveAlongPath(deltaTime);
+        moveAlongPath(
+                deltaTime
+        );
     }
 
     private void updateChase(
@@ -276,44 +388,61 @@ public class Guard {
                 || playerColumn != lastPlayerColumn
                 || path.isEmpty()) {
 
-            path = pathfinder.findPath(
-                    tileMap,
-                    getCurrentRow(),
-                    getCurrentColumn(),
-                    playerRow,
-                    playerColumn
-            );
+            path =
+                    pathfinder.findPath(
+                            tileMap,
+                            getCurrentRow(),
+                            getCurrentColumn(),
+                            playerRow,
+                            playerColumn
+                    );
 
             pathIndex = 1;
 
-            lastPlayerRow = playerRow;
-            lastPlayerColumn = playerColumn;
+            lastPlayerRow =
+                    playerRow;
+
+            lastPlayerColumn =
+                    playerColumn;
         }
 
         if (path.isEmpty()
                 || pathIndex >= path.size()) {
+
             return;
         }
 
-        moveAlongPath(deltaTime);
+        moveAlongPath(
+                deltaTime
+        );
     }
 
-    private void updateSearch(double deltaTime) {
+    private void updateSearch(
+            double deltaTime
+    ) {
 
         if (!path.isEmpty()
                 && pathIndex < path.size()) {
 
-            moveAlongPath(deltaTime);
+            moveAlongPath(
+                    deltaTime
+            );
+
             return;
         }
 
-        searchTimer += deltaTime;
+        searchTimer +=
+                deltaTime;
 
-        if (searchTimer >= SEARCH_DURATION) {
+        if (searchTimer
+                >= type.getSearchDuration()) {
 
-            state = EnemyState.PATROL;
+            state =
+                    EnemyState.PATROL;
 
-            path = Collections.emptyList();
+            path =
+                    Collections.emptyList();
+
             pathIndex = 1;
 
             searchTimer = 0;
@@ -323,17 +452,62 @@ public class Guard {
         }
     }
 
-    private boolean canHearNoise(Noise noise) {
+    private void updateInvestigate(
+            double deltaTime
+    ) {
 
-        if (!noise.isActive()) {
-            return false;
+        if (!path.isEmpty()
+                && pathIndex < path.size()) {
+
+            moveAlongPath(
+                    deltaTime
+            );
+
+            return;
         }
 
-        double guardCenterX = x + SIZE / 2;
-        double guardCenterY = y + SIZE / 2;
+        investigateTimer +=
+                deltaTime;
 
-        double deltaX = noise.getX() - guardCenterX;
-        double deltaY = noise.getY() - guardCenterY;
+        if (investigateTimer
+                >= type.getInvestigateDuration()) {
+
+            state =
+                    EnemyState.PATROL;
+
+            path =
+                    Collections.emptyList();
+
+            pathIndex = 1;
+
+            investigateTimer = 0;
+        }
+    }
+
+    private void moveAlongPath(
+            double deltaTime
+    ) {
+
+        GridNode targetNode =
+                path.get(
+                        pathIndex
+                );
+
+        double targetX =
+                targetNode.getColumn()
+                        * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE - SIZE) / 2;
+
+        double targetY =
+                targetNode.getRow()
+                        * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE - SIZE) / 2;
+
+        double deltaX =
+                targetX - x;
+
+        double deltaY =
+                targetY - y;
 
         double distance =
                 Math.sqrt(
@@ -341,55 +515,17 @@ public class Guard {
                                 + deltaY * deltaY
                 );
 
-        return distance <= noise.getRadius();
-    }
-
-    private void updateInvestigate(double deltaTime) {
-
-        if (!path.isEmpty()
-                && pathIndex < path.size()) {
-
-            moveAlongPath(deltaTime);
-            return;
-        }
-
-        investigateTimer += deltaTime;
-
-        if (investigateTimer >= INVESTIGATE_DURATION) {
-
-            state = EnemyState.PATROL;
-
-            path = Collections.emptyList();
-            pathIndex = 1;
-
-            investigateTimer = 0;
-        }
-    }
-
-    private void moveAlongPath(double deltaTime) {
-
-        GridNode targetNode = path.get(pathIndex);
-
-        double targetX =
-                targetNode.getColumn() * TileMap.TILE_SIZE
-                        + (TileMap.TILE_SIZE - SIZE) / 2;
-
-        double targetY =
-                targetNode.getRow() * TileMap.TILE_SIZE
-                        + (TileMap.TILE_SIZE - SIZE) / 2;
-
-        double deltaX = targetX - x;
-        double deltaY = targetY - y;
-
-        double distance =
-                Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-        double movement = SPEED * deltaTime;
+        double movement =
+                type.getSpeed()
+                        * deltaTime;
 
         if (distance <= movement) {
 
-            x = targetX;
-            y = targetY;
+            x =
+                    targetX;
+
+            y =
+                    targetY;
 
             pathIndex++;
 
@@ -398,25 +534,52 @@ public class Guard {
 
         if (distance > 0) {
 
-            x += (deltaX / distance) * movement;
-            y += (deltaY / distance) * movement;
+            x +=
+                    (deltaX / distance)
+                            * movement;
+
+            y +=
+                    (deltaY / distance)
+                            * movement;
         }
     }
 
     public void reset() {
 
-        x = 20 * TileMap.TILE_SIZE;
-        y = 2 * TileMap.TILE_SIZE;
+        x =
+                startColumn
+                        * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE - SIZE) / 2;
 
-        state = EnemyState.PATROL;
+        y =
+                startRow
+                        * TileMap.TILE_SIZE
+                        + (TileMap.TILE_SIZE - SIZE) / 2;
 
-        path.clear();
-        pathIndex = 0;
+        state =
+                EnemyState.PATROL;
 
-        patrolIndex = 0;
+        path =
+                Collections.emptyList();
+
+        pathIndex = 1;
+
+        if (patrolPoints.length > 1) {
+            patrolIndex = 1;
+        } else {
+            patrolIndex = 0;
+        }
 
         lastPlayerRow = -1;
         lastPlayerColumn = -1;
+
+        lastSeenRow = -1;
+        lastSeenColumn = -1;
+
+        searchTimer = 0;
+        investigateTimer = 0;
+
+        playerVisible = false;
     }
 
     public int getCurrentRow() {
@@ -449,6 +612,10 @@ public class Guard {
 
     public EnemyState getState() {
         return state;
+    }
+
+    public GuardType getType() {
+        return type;
     }
 
     public List<GridNode> getPath() {
