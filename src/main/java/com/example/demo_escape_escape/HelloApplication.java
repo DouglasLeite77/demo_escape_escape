@@ -43,6 +43,13 @@ public class HelloApplication extends Application {
 
     private int goalRow = 16;
     private int goalColumn = 23;
+    private static final int CARD_ROW = 9;
+    private static final int CARD_COLUMN = 5;
+    private static final int DOOR_ROW = 16;
+    private static final int DOOR_COLUMN = 22;
+
+    private boolean doorUnlocked = false;
+    private boolean hasAccessCard = false;
 
     private List<GridNode> path;
 
@@ -81,6 +88,27 @@ public class HelloApplication extends Application {
                     && (gameWon || gameOver)) {
 
                 reiniciarJogo();
+            }
+
+            if (event.getCode() == KeyCode.E
+                    && !hasAccessCard
+                    && jogadorPertoDoTile(
+                    CARD_ROW,
+                    CARD_COLUMN
+            )) {
+
+                hasAccessCard = true;
+            }
+
+            if (event.getCode() == KeyCode.E
+                    && hasAccessCard
+                    && !doorUnlocked
+                    && jogadorPertoDoTile(
+                    DOOR_ROW,
+                    DOOR_COLUMN
+            )) {
+
+                doorUnlocked = true;
             }
 
             if (event.getCode() == KeyCode.DIGIT1
@@ -163,6 +191,9 @@ public class HelloApplication extends Application {
 
         gameWon = false;
         gameOver = false;
+
+        hasAccessCard = false;
+        doorUnlocked = false;
 
         guard.reset();
     }
@@ -291,8 +322,6 @@ public class HelloApplication extends Application {
         path = agent.getPath();
     }
 
-
-
     private boolean podeMoverPara(
             double novoX,
             double novoY
@@ -326,22 +355,46 @@ public class HelloApplication extends Application {
                                 / TileMap.TILE_SIZE
                 );
 
-        return tileMap.isWalkable(
-                linhaSuperior,
-                colunaEsquerda
-        )
-                && tileMap.isWalkable(
-                linhaSuperior,
-                colunaDireita
-        )
-                && tileMap.isWalkable(
-                linhaInferior,
-                colunaEsquerda
-        )
-                && tileMap.isWalkable(
-                linhaInferior,
-                colunaDireita
-        );
+        boolean mapaLivre =
+                tileMap.isWalkable(
+                        linhaSuperior,
+                        colunaEsquerda
+                )
+                        && tileMap.isWalkable(
+                        linhaSuperior,
+                        colunaDireita
+                )
+                        && tileMap.isWalkable(
+                        linhaInferior,
+                        colunaEsquerda
+                )
+                        && tileMap.isWalkable(
+                        linhaInferior,
+                        colunaDireita
+                );
+
+        if (!mapaLivre) {
+            return false;
+        }
+
+        if (!doorUnlocked) {
+
+            boolean encostandoNaPorta =
+                    (linhaSuperior == DOOR_ROW
+                            && colunaEsquerda == DOOR_COLUMN)
+                            || (linhaSuperior == DOOR_ROW
+                            && colunaDireita == DOOR_COLUMN)
+                            || (linhaInferior == DOOR_ROW
+                            && colunaEsquerda == DOOR_COLUMN)
+                            || (linhaInferior == DOOR_ROW
+                            && colunaDireita == DOOR_COLUMN);
+
+            if (encostandoNaPorta) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private boolean guardaCapturouJogador() {
@@ -369,11 +422,44 @@ public class HelloApplication extends Application {
                 && playerY + TAMANHO_HITBOX > guardY;
     }
 
+    private boolean jogadorPertoDoTile(
+            int row,
+            int column
+    ) {
+
+        double playerCenterX =
+                jogadorX + TAMANHO_JOGADOR / 2;
+
+        double playerCenterY =
+                jogadorY + TAMANHO_JOGADOR / 2;
+
+        double tileCenterX =
+                column * TileMap.TILE_SIZE
+                        + TileMap.TILE_SIZE / 2.0;
+
+        double tileCenterY =
+                row * TileMap.TILE_SIZE
+                        + TileMap.TILE_SIZE / 2.0;
+
+        double deltaX =
+                playerCenterX - tileCenterX;
+
+        double deltaY =
+                playerCenterY - tileCenterY;
+
+        double distance =
+                Math.sqrt(
+                        deltaX * deltaX
+                                + deltaY * deltaY
+                );
+
+        return distance <= 48;
+    }
+
     private void renderizar(
             GraphicsContext gc,
             double deltaTime
     ) {
-
 
         gc.setFill(
                 Color.web("#1e1e1e")
@@ -390,6 +476,91 @@ public class HelloApplication extends Application {
                 gc,
                 tileMap
         );
+
+        if (!doorUnlocked) {
+
+            double doorX =
+                    DOOR_COLUMN * TileMap.TILE_SIZE;
+
+            double doorY =
+                    DOOR_ROW * TileMap.TILE_SIZE;
+
+            gc.setFill(Color.DARKRED);
+
+            gc.fillRect(
+                    doorX,
+                    doorY,
+                    TileMap.TILE_SIZE,
+                    TileMap.TILE_SIZE
+            );
+        }
+
+        if (!hasAccessCard) {
+
+            double cardX =
+                    CARD_COLUMN * TileMap.TILE_SIZE;
+
+            double cardY =
+                    CARD_ROW * TileMap.TILE_SIZE;
+
+            gc.setFill(Color.GOLD);
+
+            gc.fillRect(
+                    cardX + 8,
+                    cardY + 11,
+                    16,
+                    10
+            );
+        }
+
+        if (!hasAccessCard
+                && jogadorPertoDoTile(
+                CARD_ROW,
+                CARD_COLUMN
+        )) {
+
+            gc.setFill(Color.WHITE);
+
+            gc.setFont(
+                    javafx.scene.text.Font.font(14)
+            );
+
+            gc.fillText(
+                    "E - Pegar cartão",
+                    jogadorX - 25,
+                    jogadorY - 10
+            );
+        }
+
+        if (!doorUnlocked
+                && jogadorPertoDoTile(
+                DOOR_ROW,
+                DOOR_COLUMN
+        )) {
+
+            gc.setFill(Color.WHITE);
+
+            gc.setFont(
+                    javafx.scene.text.Font.font(14)
+            );
+
+            if (hasAccessCard) {
+
+                gc.fillText(
+                        "E - Desbloquear porta",
+                        jogadorX - 45,
+                        jogadorY - 10
+                );
+
+            } else {
+
+                gc.fillText(
+                        "Porta trancada - cartão necessário",
+                        jogadorX - 70,
+                        jogadorY - 10
+                );
+            }
+        }
 
         double exitX = EXIT_COLUMN * TileMap.TILE_SIZE;
         double exitY = EXIT_ROW * TileMap.TILE_SIZE;

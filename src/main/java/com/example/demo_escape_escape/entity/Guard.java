@@ -88,45 +88,6 @@ public class Guard {
                     );
 
             state = EnemyState.CHASE;
-            searchTimer = 0;
-
-        } else if (state == EnemyState.CHASE) {
-
-            state = EnemyState.SEARCH;
-
-            path = pathfinder.findPath(
-                    tileMap,
-                    getCurrentRow(),
-                    getCurrentColumn(),
-                    lastSeenRow,
-                    lastSeenColumn
-            );
-
-            pathIndex = 0;
-        }
-
-        playerVisible = canSeePlayer(
-                playerX,
-                playerY,
-                playerSize,
-                tileMap
-        );
-
-        if (playerVisible) {
-
-            lastSeenRow =
-                    (int) (
-                            (playerY + playerSize / 2)
-                                    / TileMap.TILE_SIZE
-                    );
-
-            lastSeenColumn =
-                    (int) (
-                            (playerX + playerSize / 2)
-                                    / TileMap.TILE_SIZE
-                    );
-
-            state = EnemyState.CHASE;
 
             searchTimer = 0;
             investigateTimer = 0;
@@ -143,7 +104,7 @@ public class Guard {
                     lastSeenColumn
             );
 
-            pathIndex = 0;
+            pathIndex = 1;
 
         } else if (state == EnemyState.PATROL
                 && canHearNoise(noise)) {
@@ -168,7 +129,7 @@ public class Guard {
                     noiseColumn
             );
 
-            pathIndex = 0;
+            pathIndex = 1;
 
             state = EnemyState.INVESTIGATE;
             investigateTimer = 0;
@@ -323,7 +284,7 @@ public class Guard {
                     playerColumn
             );
 
-            pathIndex = 0;
+            pathIndex = 1;
 
             lastPlayerRow = playerRow;
             lastPlayerColumn = playerColumn;
