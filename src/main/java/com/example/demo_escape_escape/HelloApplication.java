@@ -670,13 +670,14 @@ public class HelloApplication extends Application {
             double doorY =
                     DOOR_ROW * TileMap.TILE_SIZE;
 
-            gc.setFill(Color.DARKRED);
+            double doorSize = 40;
 
-            gc.fillRect(
-                    doorX,
-                    doorY,
-                    TileMap.TILE_SIZE,
-                    TileMap.TILE_SIZE
+            gc.drawImage(
+                    assets.getSecurityDoor(),
+                    doorX - 4,
+                    doorY - 4,
+                    doorSize,
+                    doorSize
             );
         }
 
@@ -688,13 +689,14 @@ public class HelloApplication extends Application {
             double cardY =
                     CARD_ROW * TileMap.TILE_SIZE;
 
-            gc.setFill(Color.GOLD);
+            double cardSize = 24;
 
-            gc.fillRect(
-                    cardX + 8,
-                    cardY + 11,
-                    16,
-                    10
+            gc.drawImage(
+                    assets.getAccessCard(),
+                    cardX + 4,
+                    cardY + 4,
+                    cardSize,
+                    cardSize
             );
         }
 
@@ -957,37 +959,14 @@ public class HelloApplication extends Application {
         double y =
                 row * TileMap.TILE_SIZE;
 
-        gc.setFill(
-                Color.DARKSLATEBLUE
-        );
+        double lockerSize = 40;
 
-        gc.fillRect(
-                x + 2,
-                y + 1,
-                TileMap.TILE_SIZE - 4,
-                TileMap.TILE_SIZE - 2
-        );
-
-        gc.setStroke(
-                Color.LIGHTSLATEGRAY
-        );
-
-        gc.strokeRect(
-                x + 2,
-                y + 1,
-                TileMap.TILE_SIZE - 4,
-                TileMap.TILE_SIZE - 2
-        );
-
-        gc.setFill(
-                Color.GRAY
-        );
-
-        gc.fillOval(
-                x + 22,
-                y + 15,
-                3,
-                3
+        gc.drawImage(
+                assets.getLocker(),
+                x - 4,
+                y - 4,
+                lockerSize,
+                lockerSize
         );
     }
 
